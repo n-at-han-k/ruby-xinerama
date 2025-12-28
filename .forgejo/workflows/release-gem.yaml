@@ -1,0 +1,57 @@
+name: "Release Gem"
+description: "Upload gems to RubyGems.org"
+inputs:
+  await-release:
+    description: "Whether to poll for the release to be available on RubyGems.org"
+    required: false
+    default: "true"
+  setup-trusted-publisher:
+    description: "Whether to setup the trusted publisher for the gem"
+    required: false
+    default: "true"
+  attestations:
+    description: >-
+      [EXPERIMENTAL]
+      Enable experimental support for sigstore attestations.
+      Only works with RubyGems.org via Trusted Publishing.
+    required: false
+    default: "true"
+outputs: {}
+branding:
+  color: "red"
+  icon: "upload-cloud"
+runs:
+  using: "composite"
+  steps:
+    - name: Attribute commits to last committer
+      run: |
+        git config --global user.email "$(git log -1 --pretty=format:'%ae')"
+        git config --global user.name "$(git log -1 --pretty=format:'%an')"
+      shell: bash
+    - name: Configure Git using cached credentials
+      run: |
+        git credential-cache --timeout=300 store <<EOF
+        protocol=https
+        host=github.com
+        username=x-access-token
+        password=${{ github.token }}
+
+        EOF
+        git config --local credential.helper 'cache --timeout=300'
+      shell: bash
+    - name: Configure trusted publishing credentials
+      if: ${{ inputs.setup-trusted-publisher == 'true' }}
+      uses: rubygems/configure-rubygems-credentials@v1.0.0
+    - name: Run release rake task
+      run: bundle exec rake release
+      shell: bash
+      env:
+        RUBYOPT: "${{ inputs.attestations == 'true' && format('-r{0}/rubygems-attestation-patch.rb {1}', github.action_path, env.RUBYOPT) || env.RUBYOPT }}"
+    - name: Wait for release to propagate
+      if: ${{ inputs.await-release == 'true' }}
+      run: gem exec rubygems-await pkg/*.gem
+      shell: bash
+    - name: Clean up credentials
+      if: always()
+      run: git credential-cache exit || true
+      shell: bash
