@@ -1,5 +1,7 @@
 # Xinerama
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/n-at-han-k/ruby-xinerama)
+
 Ruby FFI bindings for the Xinerama X11 extension. Query multi-monitor screen configurations with a clean, idiomatic Ruby API.
 
 Official libXinerama repo: https://gitlab.freedesktop.org/xorg/lib/libxinerama
